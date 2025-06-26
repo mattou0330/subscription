@@ -1,0 +1,297 @@
+/* Dashboard specific styles */
+
+.alert-banner {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #fbbf24;
+    color: #92400e;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+
+.header-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.status-tabs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.status-tab {
+    padding: 0.75rem 1.25rem;
+    background: var(--background);
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-tab:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.status-tab.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.subscriptions-list {
+    background: var(--surface);
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.subscriptions-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.subscriptions-table th {
+    background: var(--background);
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.subscriptions-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.subscription-row {
+    transition: background-color 0.2s;
+}
+
+.subscription-row:hover {
+    background-color: var(--background);
+}
+
+.service-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.service-logo-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.5rem;
+    background: var(--background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.service-logo-small img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.service-name {
+    font-weight: 600;
+}
+
+.price-value {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.payment-method {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.category-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    color: white;
+    font-weight: 500;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+}
+
+.status-badge.inactive {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+/* Modal styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--surface);
+    padding: 2rem;
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-large {
+    max-width: 1200px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.bulk-add-instructions {
+    background: var(--background);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.bulk-add-instructions p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.bulk-add-table {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+.bulk-add-table table {
+    width: 100%;
+    min-width: 800px;
+}
+
+.bulk-add-table th {
+    background: var(--background);
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.bulk-add-table td {
+    padding: 0.5rem;
+}
+
+.bulk-add-row input,
+.bulk-add-row select {
+    width: 100%;
+}
+
+.bulk-add-actions {
+    margin-bottom: 1rem;
+}
+
+.required {
+    color: var(--danger-color);
+}
+
+.alert {
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
