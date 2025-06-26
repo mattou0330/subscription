@@ -283,19 +283,49 @@ function toggleSubscription(id, activate) {
         'このサブスクリプションを停止しますか？\n\n停止すると次回の更新が行われなくなります。';
     
     if (confirm(message)) {
-        // Implementation for toggling subscription
-        console.log(`${action} subscription:`, id);
-        // TODO: Ajax call to update subscription status
-        location.reload();
+        fetch('api/subscription-toggle.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: id, activate: activate })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('エラー: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
     }
 }
 
 function deleteSubscription(id) {
     if (confirm('このサブスクリプションを削除しますか？\n\nこの操作は取り消せません。')) {
-        // Implementation for deleting subscription
-        console.log('Deleting subscription:', id);
-        // TODO: Ajax call to delete subscription
-        location.reload();
+        fetch('api/subscription-delete.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: id })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('エラー: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
     }
 }
 
@@ -453,6 +483,161 @@ function removeBulkRow(button) {
 document.getElementById('bulkAddModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeBulkAddModal();
+    }
+});
+
+// Add/Edit Modal Functions
+function showAddModal() {
+    document.getElementById('modalTitle').textContent = 'サブスクリプション追加';
+    document.getElementById('submitButtonText').textContent = '登録する';
+    document.getElementById('subscriptionForm').reset();
+    document.getElementById('subscriptionId').value = '';
+    document.getElementById('activeCheckboxGroup').style.display = 'none';
+    document.getElementById('start_date').value = new Date().toISOString().split('T')[0];
+    loadPaymentMethods();
+    calculateNextRenewal();
+    document.getElementById('subscriptionModal').style.display = 'flex';
+}
+
+function showEditModal(id) {
+    document.getElementById('modalTitle').textContent = 'サブスクリプション編集';
+    document.getElementById('submitButtonText').textContent = '更新する';
+    document.getElementById('activeCheckboxGroup').style.display = 'block';
+    
+    // サブスクリプションデータを取得
+    fetch(`api/subscription-get.php?id=${id}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const sub = data.subscription;
+                document.getElementById('subscriptionId').value = sub.id;
+                document.getElementById('service_name').value = sub.service_name;
+                document.getElementById('monthly_fee').value = sub.monthly_fee;
+                document.getElementById('currency').value = sub.currency;
+                document.getElementById('renewal_cycle').value = sub.renewal_cycle;
+                document.getElementById('start_date').value = sub.start_date;
+                document.getElementById('next_renewal_date').value = sub.next_renewal_date;
+                document.getElementById('is_active').checked = sub.is_active == 1;
+                
+                // 支払い方法を設定
+                loadPaymentMethods(sub.payment_method);
+                
+                document.getElementById('subscriptionModal').style.display = 'flex';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('データの取得に失敗しました');
+        });
+}
+
+function closeSubscriptionModal() {
+    document.getElementById('subscriptionModal').style.display = 'none';
+    document.getElementById('subscriptionForm').reset();
+}
+
+function loadPaymentMethods(selectedId = null) {
+    // 支払い方法を動的に読み込む
+    fetch('../payment-methods.php?ajax=1')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('payment_method');
+            select.innerHTML = '';
+            
+            if (data.methods && data.methods.length > 0) {
+                data.methods.forEach(method => {
+                    const option = document.createElement('option');
+                    option.value = method.id;
+                    option.textContent = method.name;
+                    if (selectedId && method.id == selectedId) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = 'credit_card';
+                option.textContent = 'クレジットカード（デフォルト）';
+                select.appendChild(option);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading payment methods:', error);
+            const select = document.getElementById('payment_method');
+            select.innerHTML = '<option value="credit_card">クレジットカード（デフォルト）</option>';
+        });
+}
+
+// 次回更新日を計算
+function calculateNextRenewal() {
+    const startDate = document.getElementById('start_date').value;
+    const cycle = document.getElementById('renewal_cycle').value;
+    
+    if (!startDate) return;
+    
+    const date = new Date(startDate);
+    const today = new Date();
+    
+    while (date <= today) {
+        switch (cycle) {
+            case 'weekly':
+                date.setDate(date.getDate() + 7);
+                break;
+            case 'monthly':
+                date.setMonth(date.getMonth() + 1);
+                break;
+            case 'quarterly':
+                date.setMonth(date.getMonth() + 3);
+                break;
+            case 'semiannually':
+                date.setMonth(date.getMonth() + 6);
+                break;
+            case 'yearly':
+                date.setFullYear(date.getFullYear() + 1);
+                break;
+        }
+    }
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    document.getElementById('next_renewal_date').value = `${year}-${month}-${day}`;
+}
+
+document.getElementById('start_date').addEventListener('change', calculateNextRenewal);
+document.getElementById('renewal_cycle').addEventListener('change', calculateNextRenewal);
+
+// フォーム送信処理
+document.getElementById('subscriptionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const isEdit = document.getElementById('subscriptionId').value !== '';
+    const url = isEdit ? 'api/subscription-update.php' : 'api/subscription-create.php';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('エラーが発生しました');
+    });
+});
+
+// モーダル外クリックで閉じる
+document.getElementById('subscriptionModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSubscriptionModal();
     }
 });
 </script>

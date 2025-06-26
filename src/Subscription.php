@@ -212,6 +212,9 @@ class Subscription {
                 case 'quarterly':
                     $date->add(new \DateInterval('P3M'));
                     break;
+                case 'semiannually':
+                    $date->add(new \DateInterval('P6M'));
+                    break;
                 case 'yearly':
                     $date->add(new \DateInterval('P1Y'));
                     break;

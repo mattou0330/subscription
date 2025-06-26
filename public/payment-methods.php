@@ -15,6 +15,15 @@ $db = Database::getInstance()->getConnection();
 $message = '';
 $error = '';
 
+// Ajaxリクエストの処理
+if (isset($_GET['ajax'])) {
+    header('Content-Type: application/json');
+    $stmt = $db->prepare("SELECT id, name, type FROM payment_methods WHERE user_id = :user_id ORDER BY name");
+    $stmt->execute([':user_id' => $userId]);
+    echo json_encode(['methods' => $stmt->fetchAll()]);
+    exit;
+}
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!CSRF::validateToken($_POST['csrf_token'] ?? '')) {
@@ -26,6 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'add_payment_method':
                 $name = trim($_POST['name'] ?? '');
                 $type = $_POST['type'] ?? 'credit_card';
+                if ($type === 'custom') {
+                    $type = trim($_POST['custom_type'] ?? 'other');
+                }
                 $last_four = preg_replace('/[^0-9]/', '', $_POST['last_four'] ?? '');
                 
                 if (empty($name)) {
@@ -134,6 +146,8 @@ $paymentTypeIcons = [
     'debit_card' => 'fa-credit-card',
     'paypal' => 'fa-brands fa-paypal',
     'bank_transfer' => 'fa-building-columns',
+    'apple_pay' => 'fa-brands fa-apple',
+    'paypay' => 'fa-mobile-alt',
     'other' => 'fa-wallet'
 ];
 
@@ -142,6 +156,8 @@ $paymentTypeLabels = [
     'debit_card' => 'デビットカード',
     'paypal' => 'PayPal',
     'bank_transfer' => '銀行振込',
+    'apple_pay' => 'Apple Pay',
+    'paypay' => 'PayPay',
     'other' => 'その他'
 ];
 
@@ -179,11 +195,16 @@ ob_start();
                 
                 <div class="form-group">
                     <label for="type" class="form-label">種類 <span class="required">*</span></label>
-                    <select id="type" name="type" class="form-control" required>
-                        <?php foreach ($paymentTypeLabels as $value => $label): ?>
-                            <option value="<?= $value ?>"><?= $label ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="type-selector">
+                        <select id="type" name="type" class="form-control" required onchange="checkCustomType()">
+                            <?php foreach ($paymentTypeLabels as $value => $label): ?>
+                                <option value="<?= $value ?>"><?= $label ?></option>
+                            <?php endforeach; ?>
+                            <option value="custom">カスタム...</option>
+                        </select>
+                        <input type="text" id="custom_type" name="custom_type" class="form-control" 
+                               placeholder="カスタム種類名" style="display: none; margin-top: 0.5rem;">
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -479,9 +500,28 @@ ob_start();
     color: var(--danger-color);
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
+.type-selector {
+    display: flex;
+    flex-direction: column;
+}
 </style>
 
 <script>
+function checkCustomType() {
+    const typeSelect = document.getElementById('type');
+    const customTypeInput = document.getElementById('custom_type');
+    
+    if (typeSelect.value === 'custom') {
+        customTypeInput.style.display = 'block';
+        customTypeInput.required = true;
+    } else {
+        customTypeInput.style.display = 'none';
+        customTypeInput.required = false;
+        customTypeInput.value = '';
+    }
+}
+
+
 function editPaymentMethod(id, name, type, lastFour) {
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_name').value = name;
