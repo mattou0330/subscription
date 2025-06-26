@@ -1,4 +1,8 @@
 <?php
+// エラー表示を有効化（デバッグ用）
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../src/Auth.php';
@@ -7,14 +11,21 @@ require_once __DIR__ . '/../src/Subscription.php';
 use App\Auth;
 use App\Subscription;
 
-$auth = new Auth();
-$auth->requireLogin();
+try {
+    $auth = new Auth();
+    $auth->requireLogin();
 
-$subscription = new Subscription();
-$userId = $auth->getCurrentUserId();
-$subscriptions = $subscription->getByUserId($userId);
-$subscriptionsByCategory = $subscription->getByCategory($userId);
-$monthlyTotal = $subscription->getMonthlyTotal($userId);
+    $subscription = new Subscription();
+    $userId = $auth->getCurrentUserId();
+    $subscriptions = $subscription->getByUserId($userId);
+    $subscriptionsByCategory = $subscription->getByCategory($userId);
+    $monthlyTotal = $subscription->getMonthlyTotal($userId);
+} catch (Exception $e) {
+    // エラーが発生した場合はダッシュボードにリダイレクト
+    $_SESSION['error'] = '分析ページの読み込みに失敗しました';
+    header('Location: dashboard.php');
+    exit;
+}
 
 // 選択された年（デフォルトは現在の年）
 $selectedYear = (int)($_GET['year'] ?? date('Y'));
@@ -23,7 +34,7 @@ $currentYear = (int)date('Y');
 
 // 月額費用の実績と予測データを計算
 $monthlyTrend = [];
-$db = \Database::getInstance()->getConnection();
+$db = Database::getInstance()->getConnection();
 
 for ($month = 1; $month <= 12; $month++) {
     $isPast = ($selectedYear < $currentYear) || ($selectedYear == $currentYear && $month <= $currentMonth);
@@ -38,12 +49,13 @@ for ($month = 1; $month <= 12; $month++) {
             FROM subscriptions s
             WHERE s.user_id = :user_id
             AND s.start_date <= :end_date
-            AND (s.is_active = 1 OR s.updated_at > :end_date)
+            AND (s.is_active = 1 OR s.updated_at > :end_date2)
         ");
         
         $stmt->execute([
             ':user_id' => $userId,
-            ':end_date' => $endDate
+            ':end_date' => $endDate,
+            ':end_date2' => $endDate
         ]);
         
         $result = $stmt->fetch();
@@ -375,23 +387,26 @@ new Chart(categoryCtx, {
 const paymentCtx = document.getElementById('paymentChart').getContext('2d');
 
 // 支払い方法別の統計を計算
-const paymentStats = {};
 <?php
+$paymentStats = [];
 $stmt = $db->prepare("
-    SELECT pm.name, COUNT(s.id) as count
+    SELECT 
+        COALESCE(pm.name, 'デフォルト') as name, 
+        COUNT(s.id) as count
     FROM subscriptions s
     LEFT JOIN payment_methods pm ON s.payment_method = pm.id
     WHERE s.user_id = :user_id AND s.is_active = 1
-    GROUP BY s.payment_method, pm.name
+    GROUP BY COALESCE(pm.name, 'デフォルト')
 ");
 $stmt->execute([':user_id' => $userId]);
 $paymentData = $stmt->fetchAll();
 
 foreach ($paymentData as $data) {
     $name = $data['name'] ?? 'その他';
-    echo "paymentStats['" . addslashes($name) . "'] = " . $data['count'] . ";\n";
+    $paymentStats[$name] = $data['count'];
 }
 ?>
+const paymentStats = <?= json_encode($paymentStats) ?>;
 
 new Chart(paymentCtx, {
     type: 'bar',

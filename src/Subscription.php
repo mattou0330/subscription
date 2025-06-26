@@ -170,27 +170,43 @@ class Subscription {
     }
     
     public function getByCategory($userId) {
+        // まず全てのアクティブなサブスクリプションを取得
         $stmt = $this->db->prepare("
-            SELECT s.*, c.name as category_name, c.color as category_color
+            SELECT s.*
             FROM subscriptions s
-            LEFT JOIN categories c ON s.category = c.name
             WHERE s.user_id = :user_id AND s.is_active = 1
-            ORDER BY c.name, s.service_name
+            ORDER BY s.service_name
         ");
         $stmt->execute([':user_id' => $userId]);
+        $subscriptions = $stmt->fetchAll();
         
-        $results = $stmt->fetchAll();
+        // カテゴリ一覧を取得
+        $stmt = $this->db->prepare("SELECT name, color FROM categories ORDER BY name");
+        $stmt->execute();
+        $categories = [];
+        foreach ($stmt->fetchAll() as $cat) {
+            $categories[$cat['name']] = $cat['color'];
+        }
+        
         $grouped = [];
         
-        foreach ($results as $sub) {
-            $category = $sub['category'] ?: 'その他';
+        // 各サブスクリプションをカテゴリ分け
+        foreach ($subscriptions as $sub) {
+            // サービス名からカテゴリを検出
+            $category = $this->detectCategory($sub['service_name']);
+            $sub['category'] = $category;
+            
+            // カテゴリごとにグループ化
             if (!isset($grouped[$category])) {
+                $color = isset($categories[$category]) ? $categories[$category] : '#95a5a6';
                 $grouped[$category] = [
                     'name' => $category,
-                    'color' => $sub['category_color'] ?: '#95a5a6',
+                    'color' => $color,
                     'subscriptions' => []
                 ];
             }
+            
+            $sub['category_color'] = $grouped[$category]['color'];
             $grouped[$category]['subscriptions'][] = $sub;
         }
         
