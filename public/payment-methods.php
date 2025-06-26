@@ -20,7 +20,16 @@ if (isset($_GET['ajax'])) {
     header('Content-Type: application/json');
     $stmt = $db->prepare("SELECT id, name, type FROM payment_methods WHERE user_id = :user_id ORDER BY name");
     $stmt->execute([':user_id' => $userId]);
-    echo json_encode(['methods' => $stmt->fetchAll()]);
+    $methods = $stmt->fetchAll();
+    
+    // デフォルトのオプションを追加
+    if (empty($methods)) {
+        $methods = [
+            ['id' => 'credit_card', 'name' => 'クレジットカード（デフォルト）', 'type' => 'credit_card']
+        ];
+    }
+    
+    echo json_encode(['methods' => $methods]);
     exit;
 }
 

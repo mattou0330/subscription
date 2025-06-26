@@ -125,10 +125,10 @@ unset($_SESSION['message'], $_SESSION['error']);
                 <i class="fas fa-file-excel"></i>
                 一括追加
             </button>
-            <button class="btn btn-primary" onclick="showAddModal()">
+            <a href="subscription/add.php" class="btn btn-primary">
                 <i class="fas fa-plus"></i>
                 新規追加
-            </button>
+            </a>
         </div>
     </div>
 </div>
@@ -140,10 +140,10 @@ unset($_SESSION['message'], $_SESSION['error']);
         </div>
         <h3>サブスクリプションがありません</h3>
         <p>右下の追加ボタンから新しいサブスクリプションを登録しましょう</p>
-        <button class="btn btn-primary" onclick="showAddModal()">
+        <a href="subscription/add.php" class="btn btn-primary">
             <i class="fas fa-plus"></i>
             サブスクリプションを追加
-        </button>
+        </a>
     </div>
 <?php else: ?>
     <div class="subscriptions-list">
@@ -234,9 +234,9 @@ unset($_SESSION['message'], $_SESSION['error']);
                                 <i class="fas fa-play"></i>
                             </button>
                         <?php endif; ?>
-                        <button class="btn btn-sm btn-primary" onclick="showEditModal(<?= $sub['id'] ?>)">
+                        <a href="subscription/edit.php?id=<?= $sub['id'] ?>" class="btn btn-sm btn-primary">
                             <i class="fas fa-edit"></i>
-                        </button>
+                        </a>
                         <button class="btn btn-sm btn-danger" onclick="deleteSubscription(<?= $sub['id'] ?>)">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -248,6 +248,9 @@ unset($_SESSION['message'], $_SESSION['error']);
         </table>
     </div>
 <?php endif; ?>
+
+
+
 
 <script>
 function filterByStatus(status) {
@@ -459,43 +462,40 @@ function calculateNextRenewal() {
     document.getElementById('next_renewal_date').value = `${year}-${month}-${day}`;
 }
 
-// DOMContentLoadedイベントで要素が読み込まれてからイベントリスナーを追加
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('start_date').addEventListener('change', calculateNextRenewal);
-    document.getElementById('renewal_cycle').addEventListener('change', calculateNextRenewal);
+document.getElementById('start_date').addEventListener('change', calculateNextRenewal);
+document.getElementById('renewal_cycle').addEventListener('change', calculateNextRenewal);
+
+// フォーム送信処理
+document.getElementById('subscriptionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
     
-    // フォーム送信処理
-    document.getElementById('subscriptionForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const isEdit = document.getElementById('subscriptionId').value !== '';
-        const url = isEdit ? 'api/subscription-update.php' : 'api/subscription-create.php';
-        
-        fetch(url, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('エラー: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('エラーが発生しました');
-        });
-    });
+    const formData = new FormData(this);
+    const isEdit = document.getElementById('subscriptionId').value !== '';
+    const url = isEdit ? 'api/subscription-update.php' : 'api/subscription-create.php';
     
-    // モーダル外クリックで閉じる
-    document.getElementById('subscriptionModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeSubscriptionModal();
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('エラー: ' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('エラーが発生しました');
     });
+});
+
+// モーダル外クリックで閉じる
+document.getElementById('subscriptionModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSubscriptionModal();
+    }
 });
 </script>
 
@@ -667,6 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+
 <script>
 let bulkRowCount = 1;
 
@@ -778,6 +779,108 @@ document.getElementById('bulkAddModal').addEventListener('click', function(e) {
     color: var(--danger-color);
 }
 </style>
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('payment_method');
+            select.innerHTML = '';
+            
+            if (data.methods && data.methods.length > 0) {
+                data.methods.forEach(method => {
+                    const option = document.createElement('option');
+                    option.value = method.id;
+                    option.textContent = method.name;
+                    if (selectedId && method.id == selectedId) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = 'credit_card';
+                option.textContent = 'クレジットカード（デフォルト）';
+                select.appendChild(option);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading payment methods:', error);
+            const select = document.getElementById('payment_method');
+            select.innerHTML = '<option value="credit_card">クレジットカード（デフォルト）</option>';
+        });
+}
+
+// 次回更新日を計算
+function calculateNextRenewal() {
+    const startDate = document.getElementById('start_date').value;
+    const cycle = document.getElementById('renewal_cycle').value;
+    
+    if (!startDate) return;
+    
+    const date = new Date(startDate);
+    const today = new Date();
+    
+    while (date <= today) {
+        switch (cycle) {
+            case 'weekly':
+                date.setDate(date.getDate() + 7);
+                break;
+            case 'monthly':
+                date.setMonth(date.getMonth() + 1);
+                break;
+            case 'quarterly':
+                date.setMonth(date.getMonth() + 3);
+                break;
+            case 'semiannually':
+                date.setMonth(date.getMonth() + 6);
+                break;
+            case 'yearly':
+                date.setFullYear(date.getFullYear() + 1);
+                break;
+        }
+    }
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    document.getElementById('next_renewal_date').value = `${year}-${month}-${day}`;
+}
+
+document.getElementById('start_date').addEventListener('change', calculateNextRenewal);
+document.getElementById('renewal_cycle').addEventListener('change', calculateNextRenewal);
+
+// フォーム送信処理
+document.getElementById('subscriptionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const isEdit = document.getElementById('subscriptionId').value !== '';
+    const url = isEdit ? 'api/subscription-update.php' : 'api/subscription-create.php';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('エラーが発生しました');
+    });
+});
+
+// モーダル外クリックで閉じる
+document.getElementById('subscriptionModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSubscriptionModal();
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();
