@@ -162,36 +162,30 @@ unset($_SESSION['message'], $_SESSION['error']);
             <tbody>
         <?php foreach ($subscriptions as $sub): ?>
             <?php
-            // Get logo URL
-            $logoUrl = $sub['logo_url'];
-            if (!$logoUrl) {
-                // Try to match with known services
-                $serviceLower = strtolower($sub['service_name']);
-                if (strpos($serviceLower, 'netflix') !== false) {
-                    $logoUrl = 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/netflix/netflix-original.svg';
-                } elseif (strpos($serviceLower, 'spotify') !== false) {
-                    $logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg';
-                } elseif (strpos($serviceLower, 'amazon') !== false) {
-                    $logoUrl = 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original.svg';
-                }
-            }
+            // アイコンの取得（データベースに保存されていない場合は自動検出）
+            require_once __DIR__ . '/../src/ServiceIcons.php';
+            $logoUrl = $sub['logo_url'] ?? App\ServiceIcons::getIconUrl($sub['service_name']);
+            $initials = App\ServiceIcons::getInitials($sub['service_name']);
+            $bgColor = App\ServiceIcons::getCategoryColor($sub['category'] ?? 'その他');
             
             $paymentMethodLabels = [
                 'credit_card' => 'クレジットカード',
                 'debit_card' => 'デビットカード',
                 'paypal' => 'PayPal',
                 'bank_transfer' => '銀行振込',
+                'apple_pay' => 'Apple Pay',
+                'paypay' => 'PayPay',
                 'other' => 'その他'
             ];
             ?>
             <tr class="subscription-row" data-status="<?= $sub['is_active'] ? 'active' : 'inactive' ?>" data-category="<?= htmlspecialchars($sub['category'] ?? 'その他') ?>">
                 <td>
                     <div class="service-cell">
-                        <div class="service-logo-small">
+                        <div class="service-logo-small" <?= !$logoUrl ? 'style="background-color: ' . $bgColor . '"' : '' ?>>
                             <?php if ($logoUrl): ?>
                                 <img src="<?= htmlspecialchars($logoUrl) ?>" alt="<?= htmlspecialchars($sub['service_name']) ?>">
                             <?php else: ?>
-                                <span><?= strtoupper(substr($sub['service_name'], 0, 2)) ?></span>
+                                <span><?= htmlspecialchars($initials) ?></span>
                             <?php endif; ?>
                         </div>
                         <span class="service-name"><?= htmlspecialchars($sub['service_name']) ?></span>
@@ -372,9 +366,13 @@ function showEditModal(id) {
                 document.getElementById('start_date').value = sub.start_date;
                 document.getElementById('next_renewal_date').value = sub.next_renewal_date;
                 document.getElementById('is_active').checked = sub.is_active == 1;
+                document.getElementById('logo_url').value = sub.logo_url || '';
                 
                 // 支払い方法を設定
                 loadPaymentMethods(sub.payment_method);
+                
+                // アイコンプレビューを更新
+                updateIconPreview();
                 
                 document.getElementById('subscriptionModal').style.display = 'flex';
             }
@@ -459,10 +457,61 @@ function calculateNextRenewal() {
     document.getElementById('next_renewal_date').value = `${year}-${month}-${day}`;
 }
 
+// アイコンの自動検出
+function autoDetectIcon() {
+    const serviceName = document.getElementById('service_name').value;
+    if (!serviceName) return;
+    
+    // サーバーサイドのServiceIconsクラスと同じロジックを実装
+    const serviceIcons = {
+        'netflix': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/netflix/netflix-original.svg',
+        'spotify': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/spotify/spotify-original.svg',
+        'youtube': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/youtube/youtube-original.svg',
+        'disney': 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg',
+        'amazon prime': 'https://upload.wikimedia.org/wikipedia/commons/1/11/Amazon_Prime_Video_logo.svg',
+        'apple music': 'https://upload.wikimedia.org/wikipedia/commons/2/2a/Apple_Music_Icon.svg',
+        'google drive': 'https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg',
+        'dropbox': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dropbox/dropbox-original.svg',
+        'github': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg',
+        'slack': 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/slack/slack-original.svg',
+        'notion': 'https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png',
+        'chatgpt': 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg'
+    };
+    
+    const serviceNameLower = serviceName.toLowerCase();
+    let iconUrl = null;
+    
+    // 完全一致または部分一致を確認
+    for (const [key, url] of Object.entries(serviceIcons)) {
+        if (serviceNameLower.includes(key) || key.includes(serviceNameLower)) {
+            iconUrl = url;
+            break;
+        }
+    }
+    
+    if (iconUrl && !document.getElementById('logo_url').value) {
+        document.getElementById('logo_url').value = iconUrl;
+        updateIconPreview();
+    }
+}
+
+// アイコンプレビューの更新
+function updateIconPreview() {
+    const url = document.getElementById('logo_url').value;
+    const preview = document.getElementById('iconPreview');
+    
+    if (url) {
+        preview.innerHTML = `<img src="${url}" alt="Preview" onerror="this.style.display='none'">`;
+    } else {
+        preview.innerHTML = '';
+    }
+}
+
 // DOMContentLoadedイベントで要素が読み込まれてからイベントリスナーを追加
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('start_date').addEventListener('change', calculateNextRenewal);
     document.getElementById('renewal_cycle').addEventListener('change', calculateNextRenewal);
+    document.getElementById('logo_url').addEventListener('input', updateIconPreview);
     
     // フォーム送信処理
     document.getElementById('subscriptionForm').addEventListener('submit', function(e) {
@@ -515,7 +564,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             <div class="form-group">
                 <label for="service_name">サービス名 <span class="required">*</span></label>
-                <input type="text" id="service_name" name="service_name" class="form-control" required>
+                <input type="text" id="service_name" name="service_name" class="form-control" required onchange="autoDetectIcon()">
+                <small>有名なサービスの場合、アイコンが自動設定されます</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="logo_url">アイコンURL（オプション）</label>
+                <div class="icon-preview-row">
+                    <input type="text" id="logo_url" name="logo_url" class="form-control" placeholder="https://example.com/icon.png">
+                    <div id="iconPreview" class="icon-preview"></div>
+                </div>
+                <small>カスタムアイコンのURLを指定できます</small>
             </div>
             
             <div class="form-row">
@@ -776,6 +835,30 @@ document.getElementById('bulkAddModal').addEventListener('click', function(e) {
 
 .required {
     color: var(--danger-color);
+}
+
+.icon-preview-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.icon-preview {
+    width: 48px;
+    height: 48px;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--background);
+    flex-shrink: 0;
+}
+
+.icon-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
 }
 </style>
 

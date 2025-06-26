@@ -3,6 +3,8 @@ namespace App;
 
 use PDO;
 
+require_once __DIR__ . '/ServiceIcons.php';
+
 class Subscription {
     private $db;
     
@@ -12,30 +14,35 @@ class Subscription {
     
     public function create($userId, $data) {
         $category = $this->detectCategory($data['service_name']);
+        $logoUrl = $data['logo_url'] ?? ServiceIcons::getIconUrl($data['service_name']);
         
         $stmt = $this->db->prepare("
-            INSERT INTO subscriptions (user_id, service_name, monthly_fee, currency, renewal_cycle, category, start_date, next_renewal_date) 
-            VALUES (:user_id, :service_name, :monthly_fee, :currency, :renewal_cycle, :category, :start_date, :next_renewal_date)
+            INSERT INTO subscriptions (user_id, service_name, logo_url, monthly_fee, currency, renewal_cycle, category, start_date, next_renewal_date, payment_method) 
+            VALUES (:user_id, :service_name, :logo_url, :monthly_fee, :currency, :renewal_cycle, :category, :start_date, :next_renewal_date, :payment_method)
         ");
         
         return $stmt->execute([
             ':user_id' => $userId,
             ':service_name' => $data['service_name'],
+            ':logo_url' => $logoUrl,
             ':monthly_fee' => $data['monthly_fee'],
             ':currency' => $data['currency'] ?? 'JPY',
             ':renewal_cycle' => $data['renewal_cycle'] ?? 'monthly',
             ':category' => $category,
             ':start_date' => $data['start_date'],
-            ':next_renewal_date' => $data['next_renewal_date']
+            ':next_renewal_date' => $data['next_renewal_date'],
+            ':payment_method' => $data['payment_method'] ?? 'credit_card'
         ]);
     }
     
     public function update($id, $userId, $data) {
         $category = $this->detectCategory($data['service_name']);
+        $logoUrl = $data['logo_url'] ?? ServiceIcons::getIconUrl($data['service_name']);
         
         $stmt = $this->db->prepare("
             UPDATE subscriptions 
             SET service_name = :service_name, 
+                logo_url = :logo_url,
                 monthly_fee = :monthly_fee, 
                 currency = :currency,
                 renewal_cycle = :renewal_cycle,
@@ -51,6 +58,7 @@ class Subscription {
             ':id' => $id,
             ':user_id' => $userId,
             ':service_name' => $data['service_name'],
+            ':logo_url' => $logoUrl,
             ':monthly_fee' => $data['monthly_fee'],
             ':currency' => $data['currency'] ?? 'JPY',
             ':renewal_cycle' => $data['renewal_cycle'] ?? 'monthly',
