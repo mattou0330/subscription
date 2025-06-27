@@ -45,11 +45,12 @@ if (!$subData) {
 }
 
 $data = [
-    'service_name' => filter_input(INPUT_POST, 'service_name', FILTER_SANITIZE_STRING),
+    'service_name' => filter_input(INPUT_POST, 'service_name', FILTER_SANITIZE_SPECIAL_CHARS),
     'monthly_fee' => filter_input(INPUT_POST, 'monthly_fee', FILTER_VALIDATE_FLOAT),
-    'currency' => filter_input(INPUT_POST, 'currency', FILTER_SANITIZE_STRING),
-    'renewal_cycle' => filter_input(INPUT_POST, 'renewal_cycle', FILTER_SANITIZE_STRING),
+    'currency' => filter_input(INPUT_POST, 'currency', FILTER_SANITIZE_SPECIAL_CHARS),
+    'renewal_cycle' => filter_input(INPUT_POST, 'renewal_cycle', FILTER_SANITIZE_SPECIAL_CHARS),
     'payment_method' => $_POST['payment_method'] ?? 'credit_card',
+    'logo_url' => filter_input(INPUT_POST, 'logo_url', FILTER_SANITIZE_URL),
     'start_date' => $_POST['start_date'] ?? '',
     'is_active' => isset($_POST['is_active']) ? 1 : 0
 ];
