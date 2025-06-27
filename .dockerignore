@@ -1,0 +1,11 @@
+vendor/
+.git/
+.gitignore
+.env
+.env.example
+*.log
+.DS_Store
+composer.phar
+.claude/
+.vscode/
+.idea/
