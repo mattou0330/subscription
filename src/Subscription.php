@@ -83,9 +83,8 @@ class Subscription {
     
     public function getByUserId($userId, $activeOnly = false) {
         $sql = "
-            SELECT s.*, c.color as category_color 
+            SELECT s.*
             FROM subscriptions s
-            LEFT JOIN categories c ON s.category = c.name
             WHERE s.user_id = :user_id
         ";
         if ($activeOnly) {
