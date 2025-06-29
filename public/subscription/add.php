@@ -101,8 +101,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $stmt->execute([':user_id' => $auth->getCurrentUserId()]);
                             $paymentMethods = $stmt->fetchAll();
                             
+                            // Define payment type labels
+                            $paymentTypeLabels = [
+                                'credit_card' => 'クレジットカード',
+                                'debit_card' => 'デビットカード',
+                                'paypal' => 'PayPal',
+                                'bank_transfer' => '銀行振込',
+                                'apple_pay' => 'Apple Pay',
+                                'paypay' => 'PayPay',
+                                'other' => 'その他'
+                            ];
+                            
                             if (empty($paymentMethods)): ?>
-                                <option value="credit_card">クレジットカード（デフォルト）</option>
+                                <?php foreach ($paymentTypeLabels as $value => $label): ?>
+                                    <option value="<?= $value ?>" <?= $value === 'credit_card' ? 'selected' : '' ?>><?= $label ?></option>
+                                <?php endforeach; ?>
                             <?php else: ?>
                                 <?php foreach ($paymentMethods as $method): ?>
                                     <option value="<?= $method['id'] ?>"><?= htmlspecialchars($method['name']) ?></option>
@@ -117,10 +130,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="renewal_cycle">更新サイクル <span class="required">*</span></label>
                         <select id="renewal_cycle" name="renewal_cycle" required>
-                            <option value="monthly" <?= ($_POST['renewal_cycle'] ?? 'monthly') === 'monthly' ? 'selected' : '' ?>>月更新</option>
-                            <option value="yearly" <?= ($_POST['renewal_cycle'] ?? '') === 'yearly' ? 'selected' : '' ?>>年更新</option>
-                            <option value="quarterly" <?= ($_POST['renewal_cycle'] ?? '') === 'quarterly' ? 'selected' : '' ?>>3ヶ月更新</option>
                             <option value="weekly" <?= ($_POST['renewal_cycle'] ?? '') === 'weekly' ? 'selected' : '' ?>>週更新</option>
+                            <option value="monthly" <?= ($_POST['renewal_cycle'] ?? 'monthly') === 'monthly' ? 'selected' : '' ?>>月更新</option>
+                            <option value="quarterly" <?= ($_POST['renewal_cycle'] ?? '') === 'quarterly' ? 'selected' : '' ?>>3ヶ月更新</option>
+                            <option value="semi_annually" <?= ($_POST['renewal_cycle'] ?? '') === 'semi_annually' ? 'selected' : '' ?>>6ヶ月更新</option>
+                            <option value="yearly" <?= ($_POST['renewal_cycle'] ?? '') === 'yearly' ? 'selected' : '' ?>>年更新</option>
                         </select>
                     </div>
                     

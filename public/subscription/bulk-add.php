@@ -25,6 +25,7 @@ if (!CSRF::validateToken($_POST['csrf_token'] ?? '')) {
 
 $subscription = new Subscription();
 $userId = $auth->getCurrentUserId();
+$db = Database::getInstance()->getConnection();
 $services = $_POST['services'] ?? [];
 $successCount = 0;
 $errorCount = 0;
@@ -39,10 +40,25 @@ foreach ($services as $service) {
         'service_name' => $service['name'],
         'monthly_fee' => (float)$service['fee'],
         'currency' => $service['currency'] ?? 'JPY',
-        'payment_method' => $service['payment'] ?? 'credit_card',
         'renewal_cycle' => $service['cycle'] ?? 'monthly',
         'start_date' => $service['start_date'] ?? date('Y-m-d')
     ];
+    
+    // Handle payment method
+    $paymentValue = $service['payment'] ?? null;
+    if ($paymentValue && is_numeric($paymentValue)) {
+        // If it's a payment method ID from payment_methods table
+        $data['payment_method_id'] = (int)$paymentValue;
+        // Get the payment type from the payment_methods table
+        $stmt = $db->prepare("SELECT type FROM payment_methods WHERE id = :id AND user_id = :user_id");
+        $stmt->execute([':id' => $paymentValue, ':user_id' => $userId]);
+        $paymentType = $stmt->fetchColumn();
+        $data['payment_method'] = $paymentType ?: 'credit_card';
+    } else {
+        // If it's a direct payment type (credit_card, paypal, etc.)
+        $data['payment_method'] = $paymentValue ?: 'credit_card';
+        $data['payment_method_id'] = null;
+    }
     
     // Calculate next renewal date
     $data['next_renewal_date'] = $subscription->calculateNextRenewal($data['start_date'], $data['renewal_cycle']);

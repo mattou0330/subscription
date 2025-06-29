@@ -17,8 +17,8 @@ class Subscription {
         $logoUrl = $data['logo_url'] ?? ServiceIcons::getIconUrl($data['service_name']);
         
         $stmt = $this->db->prepare("
-            INSERT INTO subscriptions (user_id, service_name, logo_url, monthly_fee, currency, renewal_cycle, category, start_date, next_renewal_date, payment_method) 
-            VALUES (:user_id, :service_name, :logo_url, :monthly_fee, :currency, :renewal_cycle, :category, :start_date, :next_renewal_date, :payment_method)
+            INSERT INTO subscriptions (user_id, service_name, logo_url, monthly_fee, currency, renewal_cycle, category, start_date, next_renewal_date, payment_method, payment_method_id) 
+            VALUES (:user_id, :service_name, :logo_url, :monthly_fee, :currency, :renewal_cycle, :category, :start_date, :next_renewal_date, :payment_method, :payment_method_id)
         ");
         
         return $stmt->execute([
@@ -31,7 +31,8 @@ class Subscription {
             ':category' => $category,
             ':start_date' => $data['start_date'],
             ':next_renewal_date' => $data['next_renewal_date'],
-            ':payment_method' => $data['payment_method'] ?? 'credit_card'
+            ':payment_method' => $data['payment_method'] ?? 'credit_card',
+            ':payment_method_id' => $data['payment_method_id'] ?? null
         ]);
     }
     
@@ -48,6 +49,7 @@ class Subscription {
                 renewal_cycle = :renewal_cycle,
                 category = :category,
                 payment_method = :payment_method,
+                payment_method_id = :payment_method_id,
                 start_date = :start_date,
                 next_renewal_date = :next_renewal_date,
                 is_active = :is_active
@@ -64,6 +66,7 @@ class Subscription {
             ':renewal_cycle' => $data['renewal_cycle'] ?? 'monthly',
             ':category' => $category,
             ':payment_method' => $data['payment_method'] ?? 'credit_card',
+            ':payment_method_id' => $data['payment_method_id'] ?? null,
             ':start_date' => $data['start_date'],
             ':next_renewal_date' => $data['next_renewal_date'],
             ':is_active' => $data['is_active'] ?? true

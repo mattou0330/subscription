@@ -19,6 +19,18 @@ $subscriptionsByCategory = $subscription->getByCategory($userId);
 $monthlyTotal = $subscription->getMonthlyTotal($userId);
 $upcomingRenewals = $subscription->getUpcomingRenewals($userId);
 
+// Fetch user's payment methods for bulk add and display
+$db = Database::getInstance()->getConnection();
+$stmt = $db->prepare("SELECT * FROM payment_methods WHERE user_id = :user_id ORDER BY name");
+$stmt->execute([':user_id' => $userId]);
+$paymentMethods = $stmt->fetchAll();
+
+// Create payment methods lookup array
+$paymentMethodsById = [];
+foreach ($paymentMethods as $method) {
+    $paymentMethodsById[$method['id']] = $method['name'];
+}
+
 // Calculate yearly total
 $yearlyTotal = 0;
 foreach ($subscriptions as $sub) {
@@ -197,8 +209,23 @@ unset($_SESSION['message'], $_SESSION['error']);
                 <td><?= date('Y/m/d', strtotime($sub['next_renewal_date'])) ?></td>
                 <td>
                     <span class="payment-method">
-                        <i class="fas fa-credit-card"></i>
-                        <?= $paymentMethodLabels[$sub['payment_method']] ?? 'クレジットカード' ?>
+                        <?php 
+                        // Display payment method name
+                        if (!empty($sub['payment_method_id']) && isset($paymentMethodsById[$sub['payment_method_id']])) {
+                            $paymentName = $paymentMethodsById[$sub['payment_method_id']];
+                        } else {
+                            $paymentName = $paymentMethodLabels[$sub['payment_method']] ?? 'クレジットカード';
+                        }
+                        
+                        // Get appropriate icon
+                        $paymentIcon = 'fa-credit-card';
+                        if ($sub['payment_method'] === 'bank_transfer') $paymentIcon = 'fa-building-columns';
+                        elseif ($sub['payment_method'] === 'paypal') $paymentIcon = 'fa-brands fa-paypal';
+                        elseif ($sub['payment_method'] === 'apple_pay') $paymentIcon = 'fa-brands fa-apple';
+                        elseif ($sub['payment_method'] === 'paypay') $paymentIcon = 'fa-mobile-alt';
+                        ?>
+                        <i class="fas <?= $paymentIcon ?>"></i>
+                        <?= htmlspecialchars($paymentName) ?>
                     </span>
                 </td>
                 <td>
@@ -686,17 +713,30 @@ document.addEventListener('DOMContentLoaded', function() {
                             </td>
                             <td>
                                 <select name="services[0][payment]" class="form-control">
-                                    <option value="credit_card">クレジットカード</option>
-                                    <option value="debit_card">デビットカード</option>
-                                    <option value="paypal">PayPal</option>
-                                    <option value="bank_transfer">銀行振込</option>
+                                    <?php if (empty($paymentMethods)): ?>
+                                        <!-- デフォルトの支払い方法 -->
+                                        <option value="credit_card">クレジットカード</option>
+                                        <option value="debit_card">デビットカード</option>
+                                        <option value="paypal">PayPal</option>
+                                        <option value="bank_transfer">銀行振込</option>
+                                        <option value="apple_pay">Apple Pay</option>
+                                        <option value="paypay">PayPay</option>
+                                        <option value="other">その他</option>
+                                    <?php else: ?>
+                                        <!-- 登録済みの支払い方法: <?= count($paymentMethods) ?>件 -->
+                                        <?php foreach ($paymentMethods as $method): ?>
+                                            <option value="<?= $method['id'] ?>"><?= htmlspecialchars($method['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                             </td>
                             <td>
                                 <select name="services[0][cycle]" class="form-control">
+                                    <option value="weekly">週更新</option>
                                     <option value="monthly">月更新</option>
-                                    <option value="yearly">年更新</option>
                                     <option value="quarterly">3ヶ月更新</option>
+                                    <option value="semi_annually">6ヶ月更新</option>
+                                    <option value="yearly">年更新</option>
                                 </select>
                             </td>
                             <td><input type="date" name="services[0][start_date]" class="form-control" value="<?= date('Y-m-d') ?>"></td>
@@ -728,6 +768,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 let bulkRowCount = 1;
+const paymentMethods = <?= json_encode($paymentMethods) ?>;
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
 
 function addBulkRow() {
     const tbody = document.getElementById('bulkAddRows');
@@ -745,17 +797,26 @@ function addBulkRow() {
         </td>
         <td>
             <select name="services[${bulkRowCount}][payment]" class="form-control">
-                <option value="credit_card">クレジットカード</option>
-                <option value="debit_card">デビットカード</option>
-                <option value="paypal">PayPal</option>
-                <option value="bank_transfer">銀行振込</option>
+                ${paymentMethods.length === 0 ? `
+                    <option value="credit_card">クレジットカード</option>
+                    <option value="debit_card">デビットカード</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="bank_transfer">銀行振込</option>
+                    <option value="apple_pay">Apple Pay</option>
+                    <option value="paypay">PayPay</option>
+                    <option value="other">その他</option>
+                ` : paymentMethods.map(method => 
+                    `<option value="${method.id}">${escapeHtml(method.name)}</option>`
+                ).join('')}
             </select>
         </td>
         <td>
             <select name="services[${bulkRowCount}][cycle]" class="form-control">
+                <option value="weekly">週更新</option>
                 <option value="monthly">月更新</option>
-                <option value="yearly">年更新</option>
                 <option value="quarterly">3ヶ月更新</option>
+                <option value="semi_annually">6ヶ月更新</option>
+                <option value="yearly">年更新</option>
             </select>
         </td>
         <td><input type="date" name="services[${bulkRowCount}][start_date]" class="form-control" value="${new Date().toISOString().split('T')[0]}"></td>
