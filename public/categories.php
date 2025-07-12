@@ -14,6 +14,39 @@ $db = Database::getInstance()->getConnection();
 $message = '';
 $error = '';
 
+// slugを生成する関数
+function generateSlug($name) {
+    // 日本語を英語に変換するマッピング
+    $slugMap = [
+        'エンターテインメント' => 'entertainment',
+        'クラウドストレージ' => 'cloud_storage',
+        '仕事効率化' => 'productivity',
+        '開発ツール' => 'development',
+        'コミュニケーション' => 'communication',
+        '学習・教育' => 'education',
+        '健康・フィットネス' => 'health',
+        'ニュース・情報' => 'news',
+        'ショッピング' => 'shopping',
+        'その他' => 'other'
+    ];
+    
+    // マッピングに存在する場合はそれを使用
+    if (isset($slugMap[$name])) {
+        return $slugMap[$name];
+    }
+    
+    // それ以外の場合は、英数字のみを残してslugを生成
+    $slug = preg_replace('/[^a-zA-Z0-9]+/', '_', strtolower($name));
+    $slug = trim($slug, '_');
+    
+    // 空の場合はランダムな文字列を生成
+    if (empty($slug)) {
+        $slug = 'category_' . uniqid();
+    }
+    
+    return $slug;
+}
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!CSRF::validateToken($_POST['csrf_token'] ?? '')) {
@@ -29,8 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($name)) {
                     $error = 'カテゴリ名を入力してください';
                 } else {
-                    $stmt = $db->prepare("INSERT INTO categories (name, color) VALUES (:name, :color)");
-                    if ($stmt->execute([':name' => $name, ':color' => $color])) {
+                    $slug = generateSlug($name);
+                    $stmt = $db->prepare("INSERT INTO categories (name, slug, color) VALUES (:name, :slug, :color)");
+                    if ($stmt->execute([':name' => $name, ':slug' => $slug, ':color' => $color])) {
                         $message = 'カテゴリを追加しました';
                     } else {
                         $error = 'カテゴリの追加に失敗しました';
@@ -44,8 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $color = $_POST['color'] ?? '#3498db';
                 
                 if ($id && !empty($name)) {
-                    $stmt = $db->prepare("UPDATE categories SET name = :name, color = :color WHERE id = :id");
-                    if ($stmt->execute([':id' => $id, ':name' => $name, ':color' => $color])) {
+                    $slug = generateSlug($name);
+                    $stmt = $db->prepare("UPDATE categories SET name = :name, slug = :slug, color = :color WHERE id = :id");
+                    if ($stmt->execute([':id' => $id, ':name' => $name, ':slug' => $slug, ':color' => $color])) {
                         $message = 'カテゴリを更新しました';
                     }
                 }

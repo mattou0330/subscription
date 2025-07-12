@@ -31,6 +31,11 @@ foreach ($paymentMethods as $method) {
     $paymentMethodsById[$method['id']] = $method['name'];
 }
 
+// Fetch categories from database
+$stmt = $db->prepare("SELECT * FROM categories ORDER BY name");
+$stmt->execute();
+$categories = $stmt->fetchAll();
+
 // Calculate yearly total
 $yearlyTotal = 0;
 foreach ($subscriptions as $sub) {
@@ -193,12 +198,8 @@ unset($_SESSION['message'], $_SESSION['error']);
             <tr class="subscription-row" data-status="<?= $sub['is_active'] ? 'active' : 'inactive' ?>" data-category="<?= htmlspecialchars($sub['category'] ?? 'その他') ?>">
                 <td>
                     <div class="service-cell">
-                        <div class="service-logo-small" <?= !$logoUrl ? 'style="background-color: ' . $bgColor . '"' : '' ?>>
-                            <?php if ($logoUrl): ?>
-                                <img src="<?= htmlspecialchars($logoUrl) ?>" alt="<?= htmlspecialchars($sub['service_name']) ?>">
-                            <?php else: ?>
-                                <span><?= htmlspecialchars($initials) ?></span>
-                            <?php endif; ?>
+                        <div class="service-logo-small" style="background-color: <?= $bgColor ?>">
+                            <span><?= htmlspecialchars($initials) ?></span>
                         </div>
                         <span class="service-name"><?= htmlspecialchars($sub['service_name']) ?></span>
                     </div>
@@ -394,6 +395,7 @@ function showEditModal(id) {
                 document.getElementById('next_renewal_date').value = sub.next_renewal_date;
                 document.getElementById('is_active').checked = sub.is_active == 1;
                 document.getElementById('logo_url').value = sub.logo_url || '';
+                document.getElementById('category').value = sub.category || 'other';
                 
                 // 支払い方法を設定
                 loadPaymentMethods(sub.payment_method);
@@ -505,7 +507,37 @@ function autoDetectIcon() {
         'chatgpt': 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg'
     };
     
+    // カテゴリの自動検出
+    const serviceCategories = {
+        'netflix': 'entertainment',
+        'spotify': 'entertainment',
+        'youtube': 'entertainment',
+        'disney': 'entertainment',
+        'amazon prime': 'entertainment',
+        'apple music': 'entertainment',
+        'google drive': 'cloud_storage',
+        'dropbox': 'cloud_storage',
+        'icloud': 'cloud_storage',
+        'github': 'development',
+        'slack': 'communication',
+        'notion': 'productivity',
+        'chatgpt': 'productivity',
+        'zoom': 'communication',
+        'microsoft teams': 'communication',
+        'adobe': 'productivity',
+        'figma': 'development',
+        'canva': 'productivity'
+    };
+    
     const serviceNameLower = serviceName.toLowerCase();
+    
+    // カテゴリの自動設定
+    for (const [service, category] of Object.entries(serviceCategories)) {
+        if (serviceNameLower.includes(service)) {
+            document.getElementById('category').value = category;
+            break;
+        }
+    }
     let iconUrl = null;
     
     // 完全一致または部分一致を確認
@@ -629,10 +661,19 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             
             <div class="form-group">
+                <label for="category">カテゴリ</label>
+                <select id="category" name="category" class="form-control">
+                    <?php foreach ($categories as $category): ?>
+                        <option value="<?= htmlspecialchars($category['slug']) ?>"><?= htmlspecialchars($category['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div class="form-group">
                 <label for="renewal_cycle">更新サイクル <span class="required">*</span></label>
                 <select id="renewal_cycle" name="renewal_cycle" class="form-control" required>
                     <option value="weekly">週更新</option>
-                    <option value="monthly">月更新</option>
+                    <option value="monthly" selected>月更新</option>
                     <option value="quarterly">3ヶ月更新</option>
                     <option value="semiannually">6ヶ月更新</option>
                     <option value="yearly">年更新</option>
@@ -733,7 +774,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>
                                 <select name="services[0][cycle]" class="form-control">
                                     <option value="weekly">週更新</option>
-                                    <option value="monthly">月更新</option>
+                                    <option value="monthly" selected>月更新</option>
                                     <option value="quarterly">3ヶ月更新</option>
                                     <option value="semi_annually">6ヶ月更新</option>
                                     <option value="yearly">年更新</option>
@@ -813,7 +854,7 @@ function addBulkRow() {
         <td>
             <select name="services[${bulkRowCount}][cycle]" class="form-control">
                 <option value="weekly">週更新</option>
-                <option value="monthly">月更新</option>
+                <option value="monthly" selected>月更新</option>
                 <option value="quarterly">3ヶ月更新</option>
                 <option value="semi_annually">6ヶ月更新</option>
                 <option value="yearly">年更新</option>
