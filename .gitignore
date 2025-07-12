@@ -1,4 +1,47 @@
+# 環境設定ファイル
 .env
+.env.local
+.env.production
+.env.docker
+
+# 依存関係
 vendor/
+
+# ログファイル
 *.log
+logs/
+*.log.*
+
+# システムファイル
 .DS_Store
+Thumbs.db
+
+# IDEファイル
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# データベース関連（本番環境では不要）
+database/*.sql
+!database/complete_schema.sql
+database/init/
+
+# Dockerファイル（本番環境では不要）
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# テンポラリファイル
+*.tmp
+*.temp
+*.cache
+
+# バックアップファイル
+*.bak
+*.backup
+*~
+
+# アップロードされたファイル（もし将来追加する場合）
+uploads/
+storage/
